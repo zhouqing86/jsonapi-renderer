@@ -20,6 +20,6 @@ module JSONAPI
   #   @option [Hash] links Top-level links to be included.
   #   @option [Hash] jsonapi_object JSON API object.
   def render(params)
-    Renderer::Document.new(params).to_hash
+    Renderer::Document.new(params).to_json
   end
 end

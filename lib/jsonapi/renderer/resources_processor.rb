@@ -1,5 +1,18 @@
 require 'set'
 
+class Cache
+  def initialize
+    @cache = {}
+  end
+
+  def fetch_multi(keys, &block)
+    keys.each_with_object({}) do |k, h|
+      @cache[k] = block.call(k) unless @cache.key?(k)
+      h[k] = @cache[k]
+    end
+  end
+end
+
 module JSONAPI
   module Renderer
     class ResourcesProcessor
@@ -7,13 +20,14 @@ module JSONAPI
         @resources = resources
         @include   = include
         @fields    = fields
+
+
+        @cache = Cache.new
       end
 
       def process
         traverse_resources
-        process_resources
-
-        [@primary, @included]
+        [@primary, @included].map { |res| process_resources(res) }
       end
 
       private
@@ -72,14 +86,34 @@ module JSONAPI
         @queue << [res, prefix, include_dir]
       end
 
-      def process_resources
-        [@primary, @included].each do |resources|
-          resources.map! do |res|
-            ri = [res.jsonapi_type, res.jsonapi_id]
-            include_dir = @include_rels[ri]
-            fields = @fields[res.jsonapi_type.to_sym]
-            res.as_jsonapi(include: include_dir, fields: fields)
-          end
+      def process_resources(resources)
+        return process_resources_with_cache(resources) if @cache
+
+        resources.map do |res|
+          ri = [res.jsonapi_type, res.jsonapi_id]
+          include_dir = @include_rels[ri]
+          fields = @fields[ri.first.to_sym]
+          res.as_jsonapi(include: include_dir, fields: fields).to_json
+        end
+      end
+
+      def process_resources_with_cache(resources)
+        hash = cache_key_map(resources)
+        cached = @cache.fetch_multi(hash.keys) do |key|
+          res, include, fields = hash[key]
+          res.as_jsonapi(include: include, fields: fields).to_json
+        end
+
+        cached.values
+      end
+
+      def cache_key_map(resources)
+        resources.each_with_object({}) do |res, h|
+          ri = [res.jsonapi_type, res.jsonapi_id]
+          include_dir = @include_rels[ri]
+          fields = @fields[ri.first.to_sym]
+          h[res.jsonapi_cache_key(include: include_dir, fields: fields)] =
+            [res, include_dir, fields]
         end
       end
     end

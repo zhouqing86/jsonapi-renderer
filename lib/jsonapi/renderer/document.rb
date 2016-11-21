@@ -14,39 +14,44 @@ module JSONAPI
         @include = JSONAPI::IncludeDirective.new(params.fetch(:include, {}))
       end
 
-      def to_hash
-        @hash ||= document_hash
+      def to_json
+        @json ||= document_hash
       end
-      alias to_h to_hash
 
       private
 
       def document_hash
-        {}.tap do |hash|
-          if @data != :no_data
-            hash.merge!(data_hash)
-          elsif @errors.any?
-            hash.merge!(errors_hash)
-          end
-          hash[:links]   = @links    if @links.any?
-          hash[:meta]    = @meta     unless @meta.nil?
-          hash[:jsonapi] = @jsonapi  unless @jsonapi.nil?
+        parts = []
+        if @data != :no_data
+          parts.concat(data_hash)
+        elsif @errors.any?
+          parts << errors_hash
         end
+        parts << "\"links\":#{@links.to_json}"      if @links.any?
+        parts << "\"meta\":#{@meta.to_json}"        unless @meta.nil?
+        parts << "\"jsonapi\": #{@jsonapi.to_json}" unless @jsonapi.nil?
+
+        parts.any? ? "{#{parts.join(',')}}" : ''
       end
 
       def data_hash
         primary, included =
           ResourcesProcessor.new(Array(@data), @include, @fields).process
-        {}.tap do |hash|
-          hash[:data]     = @data.respond_to?(:each) ? primary : primary[0]
-          hash[:included] = included if included.any?
+        [].tap do |arr|
+          data = if @data.respond_to?(:each)
+                   "[#{primary.join(',')}]"
+                 elsif @data.nil?
+                   'null'
+                 else
+                   primary.first
+                 end
+          arr << "\"data\":#{data}"
+          arr << "\"included\":[#{included.join(',')}]" if included.any?
         end
       end
 
       def errors_hash
-        {}.tap do |hash|
-          hash[:errors] = @errors.map(&:as_jsonapi)
-        end
+        "\"errors\":[#{@errors.map(&:as_jsonapi).map(&:to_json).join(',')}]"
       end
 
       def _symbolize_fields(fields)

@@ -18,6 +18,10 @@ class UserResource
     @id.to_s
   end
 
+  def jsonapi_cache_key(options = {})
+    "#{self.class.name}--#{jsonapi_type}--#{jsonapi_id}"
+  end
+
   def jsonapi_related(included)
     if included.include?(:posts)
       { posts: @posts.map { |p| p } }
@@ -83,6 +87,10 @@ class PostResource
     @id.to_s
   end
 
+  def jsonapi_cache_key(options = {})
+    "#{self.class.name}--#{jsonapi_type}--#{jsonapi_id}"
+  end
+
   def jsonapi_related(included)
     included.include?(:author) ? { author: [@author] } : {}
   end
@@ -142,7 +150,7 @@ describe JSONAPI, '#render' do
       data: nil
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'renders an empty array' do
@@ -151,7 +159,7 @@ describe JSONAPI, '#render' do
       data: []
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'renders a single resource' do
@@ -189,7 +197,7 @@ describe JSONAPI, '#render' do
       }
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'renders a collection of resources' do
@@ -260,7 +268,7 @@ describe JSONAPI, '#render' do
       ]
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'renders included relationships' do
@@ -321,7 +329,7 @@ describe JSONAPI, '#render' do
       ]
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'filters out fields' do
@@ -343,7 +351,7 @@ describe JSONAPI, '#render' do
       }
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'renders a toplevel meta' do
@@ -354,7 +362,7 @@ describe JSONAPI, '#render' do
       meta: { this: 'is_meta' }
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'renders toplevel links' do
@@ -365,7 +373,7 @@ describe JSONAPI, '#render' do
       links: { self: 'http://api.example.com/users' }
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'renders a toplevel jsonapi object' do
@@ -382,12 +390,12 @@ describe JSONAPI, '#render' do
       }
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 
   it 'renders an empty hash if neither errors nor data provided' do
     actual = JSONAPI.render({})
-    expected = {}
+    expected = ''
 
     expect(actual).to eq(expected)
   end
@@ -412,6 +420,6 @@ describe JSONAPI, '#render' do
                { id: '2', title: 'Works poorly' }]
     }
 
-    expect(actual).to eq(expected)
+    expect(JSON.parse(actual)).to eq(JSON.parse(expected.to_json))
   end
 end
