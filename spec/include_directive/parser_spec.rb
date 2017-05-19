@@ -30,14 +30,13 @@ describe JSONAPI::IncludeDirective::Parser, '.parse_include_args' do
     expect(hash).to eq expected
   end
 
-  it 'treats spaces as part of the resource name' do
+  it 'handle strings with spaces' do
     str = 'friends, comments.author , posts.author,posts. comments.author'
     hash = JSONAPI::IncludeDirective::Parser.parse_include_args(str)
     expected = {
       friends: {},
-      :' comments' => { :'author ' => {} },
-      :' posts' => { author: {} },
-      :'posts' => { :' comments' => { author: {} } }
+      :comments => { :author => {} },
+      :posts => { author: {}, :comments => { author: {} } }
     }
 
     expect(hash).to eq expected

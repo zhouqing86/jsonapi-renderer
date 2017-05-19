@@ -24,6 +24,8 @@ module JSONAPI
       # @api private
       def parse_string(include_string)
         include_string.split(',')
+          .map(&:lstrip)
+          .map(&:rstrip)
           .each_with_object({}) do |path, hash|
             deep_merge!(hash, parse_path_string(path))
         end
@@ -32,6 +34,8 @@ module JSONAPI
       # @api private
       def parse_path_string(include_path)
         include_path.split('.')
+          .map(&:lstrip)
+          .map(&:rstrip)
           .reverse
           .reduce({}) { |a, e| { e.to_sym => a } }
       end
